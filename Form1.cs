@@ -52,11 +52,6 @@ namespace UPharmacy
             tabControl.TabPages.Add(tabPMR);
             this.Controls.Add(tabControl);
 
-            // DBTab 페이지를 생성하여 TabControl에 추가
-            DBTab dbTab = new DBTab();
-            tabControl.TabPages.Add(dbTab);
-            this.Controls.Add(tabControl);
-
             // 스타일
             ApplyBackColorToAllControls(this, unifiedBackColor);
 
