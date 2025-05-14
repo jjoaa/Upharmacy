@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Globalization;
 
 namespace UPharmacy
 {
@@ -46,7 +47,6 @@ namespace UPharmacy
             Color unifiedBackColor = Color.FromArgb(180, 219, 200);
             this.BackColor = unifiedBackColor;
 
-
             tabControl = new TabControl { Dock = DockStyle.Fill };
             tabPMR = new TabPage("PMR");
             tabControl.TabPages.Add(tabPMR);
@@ -56,12 +56,9 @@ namespace UPharmacy
             DBTab dbTab = new DBTab();
             tabControl.TabPages.Add(dbTab);
             this.Controls.Add(tabControl);
-           // DB.InitializeDatabase();
 
             // 스타일
             ApplyBackColorToAllControls(this, unifiedBackColor);
-
-            
 
             RoundedGroupBox groupDailyPatients = new RoundedGroupBox
             {
@@ -90,7 +87,7 @@ namespace UPharmacy
             dailyPatientList.Columns.Add("dailyResident", "주민번호");
             dailyPatientList.Columns.Add("dailyDoctorName", "의사명");
             dailyPatientList.Columns.Add("dailyDays", "일수");
-            dailyPatientList.Columns.Add("dailyPaymentAmount", "영수액"); //총약제비-보험(1000)
+            dailyPatientList.Columns.Add("dailyPaymentAmount", "영수액"); 
             groupDailyPatients.Controls.Add(dailyPatientList);
             StyleGrid(dailyPatientList); //스타일
 
@@ -301,7 +298,6 @@ namespace UPharmacy
                 MessageBox.Show("메모 내용과 일자를 입력해주세요.");
                 return;
             }
-
             string[] str = { txtContent.Text.Trim(), txtDay.Text.Trim() };
             ListViewItem item = new ListViewItem(str);
             listViewMemo.Items.Add(item);
@@ -321,22 +317,17 @@ namespace UPharmacy
                 MessageBox.Show("삭제할 메모를 선택하세요.");
             }
         }
-        //버튼 이벤트 
-
-    
+   
         //스타일
         private void ApplyBackColorToAllControls(Control parent, Color backColor)
         {
             foreach (Control control in parent.Controls)
             {
-                // 자신에게도 적용
                 control.BackColor = backColor;
 
-                // 필요시 텍스트 색도 조절
                 if (control is GroupBox || control is Label)
                     control.ForeColor = Color.Black;
 
-                // 재귀적으로 자식 컨트롤에도 적용
                 if (control.HasChildren)
                 {
                     ApplyBackColorToAllControls(control, backColor);
@@ -371,9 +362,7 @@ namespace UPharmacy
             btn.Font = new Font("맑은 고딕", 9, FontStyle.Bold);
         }
 
-        //버튼클릭하면 csv 파일 열고, csv 파일 보여주고, DB 저장하기
-        //DB 저장된거(환자이름, 주민번호) 불러와서 보여주기
-    private void btnQR_Click(object sender, EventArgs e)
+   private void btnQR_Click(object sender, EventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog
             {
@@ -385,11 +374,9 @@ namespace UPharmacy
             {
                 DisplayCsvInGroupBox(ofd.FileName);
             }
-            
         }
 
-       
-        private void DisplayCsvInGroupBox(string filePath)
+       private void DisplayCsvInGroupBox(string filePath)
         {
             try
             {
@@ -443,7 +430,7 @@ namespace UPharmacy
                             amountValue = 100 * parsedAmount;
                         }
 
-                        // ✅ 현재 조제내역에 추가
+                        // 현재 조제내역에 추가
                         currentPrescriptionDetails.Rows.Add(
                             prescriptionNo++.ToString(),
                             drugCode, drugName, dose, timesPerDay, days,
@@ -471,7 +458,6 @@ namespace UPharmacy
                         };
                         DB.InsertDetail(detail);
 
-
                         // 마지막 환자 정보 저장 (환자 1명 기준 파일로 가정)
                         latestName = name;
                         latestJumin = jumin;
@@ -480,36 +466,44 @@ namespace UPharmacy
                         latestDays = days;
                         latestHospital = hospital;
 
-                        // ✅ 환자정보에 추가
+                        // 환자정보에 추가
                         if (!seenPatientsForInfo.Contains(jumin))
                         {
                             string gender = "N/A";
                             int age = -1;
 
-                            if (jumin.Length >= 7)
+                            string cleanJumin = jumin.Replace("-", "");
+
+                            if (cleanJumin.Length >= 7)
                             {
-                                char genderCode = jumin[7];
-                                int century = (genderCode == '1' || genderCode == '2') ? 1900 :
-                                              (genderCode == '3' || genderCode == '4') ? 2000 : 0;
+                                char genderCode = cleanJumin[6];  
 
-                                if (century > 0)
+                                int century = 0;
+                                switch (genderCode)
                                 {
-                                    gender = (genderCode == '1' || genderCode == '3') ? "남" : "여";
-                                    string yearPart = jumin.Substring(0, 2);
-                                    string monthPart = jumin.Substring(2, 2);
-                                    string dayPart = jumin.Substring(4, 2);
+                                    case '1': case '2': century = 1900; break;
+                                    case '3': case '4': century = 2000; break;
+                                    default: century = 0; break;
+                                }
 
-                                    if (int.TryParse(yearPart, out int yy) &&
-                                        int.TryParse(monthPart, out int mm) &&
-                                        int.TryParse(dayPart, out int dd))
+                                gender = (genderCode % 2 == 1) ? "남" : "여";
+
+                                string yearPart = cleanJumin.Substring(0, 2);
+                                string monthPart = cleanJumin.Substring(2, 2);
+                                string dayPart = cleanJumin.Substring(4, 2);
+
+                                if (int.TryParse(yearPart, out int yy) &&
+                                    int.TryParse(monthPart, out int mm) &&
+                                    int.TryParse(dayPart, out int dd) &&
+                                    century > 0)
+                                {
+                                    int birthYear = century + yy;
+                                    string birthDateStr = $"{birthYear:D4}-{mm:D2}-{dd:D2}";
+                                    if (DateTime.TryParseExact(birthDateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime birthDate))
                                     {
-                                        int birthYear = century + yy;
-                                        if (DateTime.TryParse($"{birthYear}-{mm}-{dd}", out DateTime birthDate))
-                                        {
-                                            DateTime today = DateTime.Today;
-                                            age = today.Year - birthDate.Year;
-                                            if (birthDate > today.AddYears(-age)) age--; // 생일 안 지났으면 -1
-                                        }
+                                        DateTime today = DateTime.Today;
+                                        age = today.Year - birthDate.Year;
+                                        if (birthDate > today.AddYears(-age)) age--; // 생일 안 지났으면 -1
                                     }
                                 }
                             }
@@ -527,7 +521,7 @@ namespace UPharmacy
                         }
                     }
 
-                    // ✅ 조제 금액 합계 계산 (모든 행 완료 후)
+                    // 조제 금액 합계 계산 (모든 행 완료 후)
                     int totalAmountSum = 0;
                     foreach (DataGridViewRow row in currentPrescriptionDetails.Rows)
                     {
@@ -548,7 +542,7 @@ namespace UPharmacy
                     DB.InsertSummary(summary);
                     //Console.WriteLine($"총 금액: {totalAmountSum}");
 
-                    // ✅ 일일환자 리스트에 추가
+                    // 일일환자 리스트에 추가
                     string dailyKey = $"{latestName}_{latestJumin}_{latestDate}";
                     if (!seenPatientsForDailyList.Contains(dailyKey))
                     {
@@ -563,23 +557,34 @@ namespace UPharmacy
                         );
                         seenPatientsForDailyList.Add(dailyKey);
                     }
+
                     // 과거 조제 리스트 표시
                     pastPrescriptionList.Rows.Clear();
                     var summaries = DB.GetSummariesByJumin(latestJumin);
-                    int i = 1;
-                    foreach (var s in summaries)
+                    if (DateTime.TryParse(latestDate, out DateTime csvDate))
                     {
-                        pastPrescriptionList.Rows.Add(i++, s.Date, s.Hospital, s.Doctor, s.TotalAmountSum);
+                        int i = 1;
+                        foreach (var s in summaries)
+                        {
+                            if (DateTime.TryParse(s.Date, out DateTime summaryDate) && summaryDate < csvDate)
+                            {
+                                pastPrescriptionList.Rows.Add(i++, s.Date, s.Hospital, s.Doctor, s.TotalAmountSum);
+                            }
+                        }
                     }
-
-                    // 과거 조제 내역 표시
                     previousPrescriptionDetails.Rows.Clear();
                     var details = DB.GetDetailsByJumin(latestJumin);
-                    int j = 1;
-                    foreach (var d in details)
+                   if (DateTime.TryParse(latestDate, out csvDate)) 
                     {
-                        previousPrescriptionDetails.Rows.Add(j++, d.Date, d.DrugCode, d.DrugName, d.Dose, d.TimesPerDay, d.Days,
-                                                             d.TotalAmount, d.Insulance, d.Danga, d.AmountValue);
+                        int j = 1;
+                        foreach (var d in details)
+                        {
+                            if (DateTime.TryParse(d.Date, out DateTime recordDate) && recordDate < csvDate)
+                            {
+                                previousPrescriptionDetails.Rows.Add(j++, d.Date, d.DrugCode, d.DrugName, d.Dose, d.TimesPerDay, d.Days,
+                                                                     d.TotalAmount, d.Insulance, d.Danga, d.AmountValue);
+                            }
+                        }
                     }
                     currentPrescriptionDetails.Refresh();
                     dailyPatientList.Refresh();
@@ -591,8 +596,5 @@ namespace UPharmacy
                 MessageBox.Show($"파일을 불러오는 중 오류 발생: {ex.Message}");
             }
         }
-
-
     }
-
 }
