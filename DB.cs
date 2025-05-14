@@ -12,19 +12,12 @@ namespace UPharmacy
     public static class DB
     {
         private static readonly string connectionString = "Data Source=prescriptions.db;Version=3;";
-        //connectionString: SQLite 데이터베이스 파일에 대한 연결 문자열
-        //prescriptions.db라는 데이터베이스 파일을 사용
 
-        //static DatabaseHelper() : 클래스가 처음 사용될 때 한 번만 실행되는 정적 생성자
-        //이곳에서 데이터베이스와 연결하고 필요한 테이블을 생성
         static DB()
         {
             using (var conn = new SQLiteConnection(connectionString))
             {
                 conn.Open();
-
-                //CREATE TABLE IF NOT EXISTS: 테이블이 이미 존재하지 않으면 새로 생성
-                //이 구문을 사용하면 애플리케이션 실행 시 테이블이 없으면 생성되고, 있으면 기존 테이블을 그대로 사용
 
                 // 테이블 1: 요약
                 string createSummaryTable = @"
@@ -37,10 +30,6 @@ namespace UPharmacy
                         totalAmountSum INTEGER
                     );"
                 ;
-
-
-                // SQLiteCommand를 사용하여 SQL 쿼리를 실행
-                // SQL 쿼리에서는 @jumin, @name, @date 등 파라미터를 사용하여 값들을 안전하게 삽입
 
                 using (var cmd1 = new SQLiteCommand(createSummaryTable, conn))
                 {
@@ -66,7 +55,7 @@ namespace UPharmacy
 
                 using (var cmd2 = new SQLiteCommand(createDetailTable, conn))
                 {
-                    cmd2.ExecuteNonQuery(); //실제로 데이터베이스에 변경 사항을 반영
+                    cmd2.ExecuteNonQuery(); 
                 }
             }
         }
@@ -130,13 +119,6 @@ namespace UPharmacy
             }
         }
 
-        /*
-         목적: pastPrescriptionList 테이블에서 특정 주민번호(jumin)에 해당하는 요약 정보를 조회합니다.
-
-SQLiteDataReader를 사용하여 결과를 한 행씩 읽고, 읽은 데이터를 PrescriptionSummary 객체로 변환하여 리스트에 저장합니다.
-
-List<PrescriptionSummary> 형태로 조회된 요약 정보를 반환합니다.
-         */
         // 요약 정보 조회
         public static List<PrescriptionSummary> GetSummariesByJumin(string jumin)
         {
