@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -11,12 +11,12 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace main
+namespace UPharmacy
 {
     public partial class Form1 : Form
     {
         private TabControl tabControl;
-        private TabPage tabPMR;
+        private TabPage tabPMR, tabDB;
         private DataGridView dailyPatientList,
                              pastPrescriptionList,
                              Patient,
@@ -26,7 +26,7 @@ namespace main
         private ListView listViewMemo;
         private Button btnInsert, btnDelete, btnQR;
 
-       
+
         private HashSet<string> seenPatientsForDailyList = new HashSet<string>();
         private HashSet<string> seenPatientsForInfo = new HashSet<string>();
         private int dailyNo = 1;
@@ -39,22 +39,29 @@ namespace main
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            this.Text = "굿약국";
+            this.Text = "UPharmacy";
             this.Width = 1200;
             this.Height = 800;
             this.StartPosition = FormStartPosition.CenterScreen;
-            Color unifiedBackColor = Color.FromArgb(180, 219, 200); 
+            Color unifiedBackColor = Color.FromArgb(180, 219, 200);
             this.BackColor = unifiedBackColor;
 
-           
+
             tabControl = new TabControl { Dock = DockStyle.Fill };
             tabPMR = new TabPage("PMR");
             tabControl.TabPages.Add(tabPMR);
             this.Controls.Add(tabControl);
 
-            // ✅ 전체 컨트롤에 배경색 적용
+            // DBTab 페이지를 생성하여 TabControl에 추가
+            DBTab dbTab = new DBTab();
+            tabControl.TabPages.Add(dbTab);
+            this.Controls.Add(tabControl);
+           // DB.InitializeDatabase();
+
+            // 스타일
             ApplyBackColorToAllControls(this, unifiedBackColor);
 
+            
 
             RoundedGroupBox groupDailyPatients = new RoundedGroupBox
             {
@@ -83,7 +90,7 @@ namespace main
             dailyPatientList.Columns.Add("dailyResident", "주민번호");
             dailyPatientList.Columns.Add("dailyDoctorName", "의사명");
             dailyPatientList.Columns.Add("dailyDays", "일수");
-            dailyPatientList.Columns.Add("dailyPaymentAmount", "영수액");
+            dailyPatientList.Columns.Add("dailyPaymentAmount", "영수액"); //총약제비-보험(1000)
             groupDailyPatients.Controls.Add(dailyPatientList);
             StyleGrid(dailyPatientList); //스타일
 
@@ -107,10 +114,10 @@ namespace main
                 Anchor = AnchorStyles.Top | AnchorStyles.Left
             };
             pastPrescriptionList.Columns.Add("pastPrescriptionNo", "NO");
-            pastPrescriptionList.Columns.Add("pastDate", "조제일자");
+            pastPrescriptionList.Columns.Add("pastDate", "날짜");
             pastPrescriptionList.Columns.Add("pastHospitalName", "병의원명");
             pastPrescriptionList.Columns.Add("pastDoctorName", "의사명");
-            pastPrescriptionList.Columns.Add("pastAmount", "총약제비");
+           
             pastPrescriptionList.Columns.Add("pastPayment", "영수액");
             groupPastPrescriptions.Controls.Add(pastPrescriptionList);
             StyleGrid(pastPrescriptionList); //스타일
@@ -235,10 +242,10 @@ namespace main
             currentPrescriptionDetails.Columns.Add("currentTime", "횟수");
             currentPrescriptionDetails.Columns.Add("currentDays", "일수");
             currentPrescriptionDetails.Columns.Add("currentTotal", "총량");
-            currentPrescriptionDetails.Columns.Add("currentInsurance", "보험");
-            currentPrescriptionDetails.Columns.Add("currentUnitPrice", "단가");
-            currentPrescriptionDetails.Columns.Add("currentPrice", "금액");
-            currentPrescriptionDetails.Columns.Add("currentOrderStatus", "형태");
+            currentPrescriptionDetails.Columns.Add("currentInsurance", "보험"); //건강보험(1)
+            currentPrescriptionDetails.Columns.Add("currentUnitPrice", "단가"); //100으로 통일
+            currentPrescriptionDetails.Columns.Add("currentPrice", "금액"); // sum(단가*총량)
+            //currentPrescriptionDetails.Columns.Add("currentOrderStatus", "형태");
             groupToday.Controls.Add(currentPrescriptionDetails);
             StyleGrid(currentPrescriptionDetails);
 
@@ -260,16 +267,17 @@ namespace main
                 Size = new Size(560, 150),
             };
             previousPrescriptionDetails.Columns.Add("previousDrugNo", "NO");
-            previousPrescriptionDetails.Columns.Add("previousDrugCode", "약품코드");
+            previousPrescriptionDetails.Columns.Add("previousdate", "날짜");
+            previousPrescriptionDetails.Columns.Add("previousDrug", "약품코드"); 
             previousPrescriptionDetails.Columns.Add("previousDrugName", "약품명");
             previousPrescriptionDetails.Columns.Add("previousDosePerDay", "1회량");
             previousPrescriptionDetails.Columns.Add("previousTime", "횟수");
             previousPrescriptionDetails.Columns.Add("previousDays", "일수");
             previousPrescriptionDetails.Columns.Add("previousTotal", "총량");
-            previousPrescriptionDetails.Columns.Add("previousInsurance", "보험");
+            previousPrescriptionDetails.Columns.Add("previousInsurance", "보험"); 
             previousPrescriptionDetails.Columns.Add("previousUnitPrice", "단가");
             previousPrescriptionDetails.Columns.Add("previousPrice", "금액");
-            previousPrescriptionDetails.Columns.Add("previousOrderStatus", "형태");
+            //previousPrescriptionDetails.Columns.Add("previousOrderStatus", "형태");
             groupPastDetail.Controls.Add(previousPrescriptionDetails);
             StyleGrid(previousPrescriptionDetails);
 
@@ -277,7 +285,7 @@ namespace main
             btnQR = new Button
             {
                 Text = "처방전",
-                Location = new Point(10, 20),
+                Location = new Point(1080, 690),
                 Size = new Size(60, 25)
             };
             tabPMR.Controls.Add(btnQR);
@@ -313,20 +321,9 @@ namespace main
                 MessageBox.Show("삭제할 메모를 선택하세요.");
             }
         }
+        //버튼 이벤트 
 
-        private void btnQR_Click(object sender, EventArgs e)
-        {
-            OpenFileDialog ofd = new OpenFileDialog
-            {
-                Filter = "CSV/TSV Files (*.csv;*.tsv;*.txt)|*.csv;*.tsv;*.txt",
-                Title = "처방 CSV/TSV 파일 열기"
-            };
-
-            if (ofd.ShowDialog() == DialogResult.OK)
-            {
-                DisplayCsvInGroupBox(ofd.FileName);
-            }
-        }
+    
         //스타일
         private void ApplyBackColorToAllControls(Control parent, Color backColor)
         {
@@ -374,27 +371,29 @@ namespace main
             btn.Font = new Font("맑은 고딕", 9, FontStyle.Bold);
         }
 
-        private RoundedGroupBox CreateStyledRoundedGroupBox(string title, Point location, Size size)
+        //버튼클릭하면 csv 파일 열고, csv 파일 보여주고, DB 저장하기
+        //DB 저장된거(환자이름, 주민번호) 불러와서 보여주기
+    private void btnQR_Click(object sender, EventArgs e)
         {
-            return new RoundedGroupBox
+            OpenFileDialog ofd = new OpenFileDialog
             {
-                Text = title,
-                Location = location,
-                Size = size,
-                BackColor = Color.White,
-                ForeColor = Color.Black,
-                Font = new Font("맑은 고딕", 9, FontStyle.Bold),
-                CornerRadius = 10
+                Filter = "CSV/TSV Files (*.csv;*.tsv;*.txt)|*.csv;*.tsv;*.txt",
+                Title = "처방 CSV/TSV 파일 열기"
             };
+
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                DisplayCsvInGroupBox(ofd.FileName);
+            }
+            
         }
 
-        // csv 파일 불러오기
+       
         private void DisplayCsvInGroupBox(string filePath)
         {
             try
             {
                 currentPrescriptionDetails.Rows.Clear();
-
                 Patient.Rows.Clear();
 
                 using (var reader = new StreamReader(filePath, Encoding.GetEncoding("euc-kr")))
@@ -405,6 +404,12 @@ namespace main
                     char delimiter = headerLine.Count(c => c == '\t') > headerLine.Count(c => c == ',') ? '\t' : ',';
 
                     int prescriptionNo = 1;
+                    string latestName = "";
+                    string latestJumin = "";
+                    string latestDate = "";
+                    string latestDoctor = "";
+                    string latestDays = "";
+                    string latestHospital = "";
 
                     while (!reader.EndOfStream)
                     {
@@ -414,60 +419,68 @@ namespace main
                         var parts = line.Split(delimiter);
                         if (parts.Length < 10) continue;
 
-                        //연락처, 피보험자 O
-                        //string name = parts[0];           // 고객명
-                        //string jumin = parts[1];          // 주민번호
-                        //string date = parts[2];           // 처방일자
-                        //string hospital = parts[3];       // 병원명
-                        //string doctor = parts[4];         // 의사명
-                        //string drugCode = parts[5];
-                        //string drugName = parts[6];
-                        //string dose = parts[7];
-                        //string timesPerDay = parts[8];
-                        //string days = parts[9];
+                        // 기본 정보
+                        string name = parts[0];            // 고객명
+                        string jumin = parts[1];           // 주민번호
+                        string date = parts[2];            // 처방일자
+                        string hospital = parts[3];        // 병원명
+                        string doctor = parts[4];          // 의사명
+                        string drugCode = parts[5];        // 약코드
+                        string drugName = parts[6];        // 약 이름
+                        string dose = parts[7];            // 1회 투약량
+                        string timesPerDay = parts[8];     // 1일 투약횟수
+                        string days = parts[9];            // 총 투약일수
 
-                        //연락처, 피보험자 삭제
-                        string name = parts[0];           // 고객명
-                        string jumin = parts[1];          // 주민번호
-                        string date = parts[2];           // 처방일자
-                        string hospital = parts[3];       // 병원명
-                        string doctor = parts[4];         // 의사명
-                        string drugCode = parts[5];
-                        string drugName = parts[6];
-                        string dose = parts[7];
-                        string timesPerDay = parts[8];
-                        string days = parts[9];
-
+                        // 계산: 총량 = 1회량 * 1일횟수 * 일수
                         string totalAmount = (float.TryParse(dose, out float d) &&
                                               float.TryParse(timesPerDay, out float t) &&
                                               float.TryParse(days, out float n))
                             ? (d * t * n).ToString("0.##") : "";
 
-                        // ✅ 현재 조제내역
+                        int amountValue = 0;
+                        if (int.TryParse(totalAmount, out int parsedAmount))
+                        {
+                            amountValue = 100 * parsedAmount;
+                        }
+
+                        // ✅ 현재 조제내역에 추가
                         currentPrescriptionDetails.Rows.Add(
                             prescriptionNo++.ToString(),
                             drugCode, drugName, dose, timesPerDay, days,
-                            totalAmount, "", "", "", ""
+                            totalAmount,
+                            "건강보험",
+                            100,
+                            amountValue
                         );
 
-                        // ✅ 일일환자 리스트
-                        string dailyKey = $"{name}_{jumin}_{date}";
-                        if (!seenPatientsForDailyList.Contains(dailyKey))
+                        // 조제내역 DB 저장
+                        var detail = new PrescriptionDetail
                         {
-                            dailyPatientList.Rows.Insert(0,  // 👈 맨 앞에 추가
-                                date,
-                                dailyNo++.ToString(),  // 👈 번호는 계속 증가
-                                //"",  // 종별 없음
-                                name,
-                                jumin,
-                                doctor,
-                                days,
-                                ""   // 영수액 없음
-                            );
-                            seenPatientsForDailyList.Add(dailyKey);
-                        }
+                            Jumin = jumin,
+                            Name = name,
+                            Date = date,
+                            DrugCode = drugCode,
+                            DrugName = drugName,
+                            Dose = dose,
+                            TimesPerDay = timesPerDay,
+                            Days = days,
+                            TotalAmount = totalAmount,
+                            Insulance = "건강보험",
+                            Danga = 100,
+                            AmountValue = amountValue
+                        };
+                        DB.InsertDetail(detail);
 
-                        // ✅ 환자정보
+
+                        // 마지막 환자 정보 저장 (환자 1명 기준 파일로 가정)
+                        latestName = name;
+                        latestJumin = jumin;
+                        latestDate = date;
+                        latestDoctor = doctor;
+                        latestDays = days;
+                        latestHospital = hospital;
+
+                        // ✅ 환자정보에 추가
                         if (!seenPatientsForInfo.Contains(jumin))
                         {
                             string gender = "N/A";
@@ -487,40 +500,87 @@ namespace main
                                     string dayPart = jumin.Substring(4, 2);
 
                                     if (int.TryParse(yearPart, out int yy) &&
-                                            int.TryParse(monthPart, out int mm) &&
-                                            int.TryParse(dayPart, out int dd))
+                                        int.TryParse(monthPart, out int mm) &&
+                                        int.TryParse(dayPart, out int dd))
                                     {
                                         int birthYear = century + yy;
-                                        DateTime birthDate;
-                                        if (DateTime.TryParse($"{birthYear}-{mm}-{dd}", out birthDate))
+                                        if (DateTime.TryParse($"{birthYear}-{mm}-{dd}", out DateTime birthDate))
                                         {
                                             DateTime today = DateTime.Today;
                                             age = today.Year - birthDate.Year;
-                                            if (birthDate > today.AddYears(-age)) age--; // 아직 생일 안 지났으면 -1
+                                            if (birthDate > today.AddYears(-age)) age--; // 생일 안 지났으면 -1
                                         }
                                     }
                                 }
                             }
 
                             string ageSex = (age != -1 ? age.ToString() : "N/A") + "(" + gender + ")";
-
                             Patient.Rows.Add(
                                 name,
-                                //"",  // 종별
                                 jumin,
-                                //"",  // 연락처
-                                //"",  // 피보험자
                                 ageSex,
                                 date,
                                 hospital,
-                                ""      // 조제시 참고사항
+                                "" // 조제시 참고사항
                             );
-
                             seenPatientsForInfo.Add(jumin);
                         }
-
                     }
 
+                    // ✅ 조제 금액 합계 계산 (모든 행 완료 후)
+                    int totalAmountSum = 0;
+                    foreach (DataGridViewRow row in currentPrescriptionDetails.Rows)
+                    {
+                        if (row.Cells[9].Value != null && int.TryParse(row.Cells[9].Value.ToString(), out int amount))
+                        {
+                            totalAmountSum += amount;
+                        }
+                    }
+                    var summary = new PrescriptionSummary
+                    {
+                        Jumin = latestJumin,
+                        Name = latestName,
+                        Date = latestDate,
+                        Hospital = latestHospital,
+                        Doctor = latestDoctor,
+                        TotalAmountSum = totalAmountSum
+                    };
+                    DB.InsertSummary(summary);
+                    //Console.WriteLine($"총 금액: {totalAmountSum}");
+
+                    // ✅ 일일환자 리스트에 추가
+                    string dailyKey = $"{latestName}_{latestJumin}_{latestDate}";
+                    if (!seenPatientsForDailyList.Contains(dailyKey))
+                    {
+                        dailyPatientList.Rows.Insert(0,
+                            latestDate,
+                            dailyNo++.ToString(),
+                            latestName,
+                            latestJumin,
+                            latestDoctor,
+                            latestDays,
+                            totalAmountSum
+                        );
+                        seenPatientsForDailyList.Add(dailyKey);
+                    }
+                    // 과거 조제 리스트 표시
+                    pastPrescriptionList.Rows.Clear();
+                    var summaries = DB.GetSummariesByJumin(latestJumin);
+                    int i = 1;
+                    foreach (var s in summaries)
+                    {
+                        pastPrescriptionList.Rows.Add(i++, s.Date, s.Hospital, s.Doctor, s.TotalAmountSum);
+                    }
+
+                    // 과거 조제 내역 표시
+                    previousPrescriptionDetails.Rows.Clear();
+                    var details = DB.GetDetailsByJumin(latestJumin);
+                    int j = 1;
+                    foreach (var d in details)
+                    {
+                        previousPrescriptionDetails.Rows.Add(j++, d.Date, d.DrugCode, d.DrugName, d.Dose, d.TimesPerDay, d.Days,
+                                                             d.TotalAmount, d.Insulance, d.Danga, d.AmountValue);
+                    }
                     currentPrescriptionDetails.Refresh();
                     dailyPatientList.Refresh();
                     Patient.Refresh();
@@ -528,10 +588,10 @@ namespace main
             }
             catch (Exception ex)
             {
-                MessageBox.Show("CSV 읽기 오류: " + ex.Message);
+                MessageBox.Show($"파일을 불러오는 중 오류 발생: {ex.Message}");
             }
-
         }
+
 
     }
 
