@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
@@ -6,64 +6,68 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using MySql.Data.MySqlClient;
 
 namespace UPharmacy
 {
     public static class DB
     {
-        private static readonly string connectionString = "Data Source=prescriptions.db;Version=3;";
+        private static readonly string connectionString = "Server=127.0.0.1; Port=3306; Database=upharmacy; Uid=root; Pwd=000000; Charset=utf8;";
 
         static DB()
         {
-            using (var conn = new SQLiteConnection(connectionString))
+            try
             {
-                conn.Open();
-
-                // 테이블 1: 요약
-                string createSummaryTable = @"
-                    CREATE TABLE IF NOT EXISTS pastPrescriptionList (
-                        jumin TEXT,
-                        name TEXT,
-                        date TEXT,
-                        hospital TEXT,
-                        doctor TEXT,
-                        totalAmountSum INTEGER
-                    );"
-                ;
-
-                using (var cmd1 = new SQLiteCommand(createSummaryTable, conn))
+                using (var conn = new MySqlConnection(connectionString))
                 {
-                    cmd1.ExecuteNonQuery();
-                }
+                    conn.Open();
 
-                // 테이블 2: 상세
-                string createDetailTable = @"
-                    CREATE TABLE IF NOT EXISTS previousPrescriptionDetails (
-                        jumin TEXT,
-                        name TEXT,
-                        date TEXT,
-                        drugCode TEXT,
-                        drugName TEXT,
-                        dose TEXT,
-                        timesPerDay TEXT,
-                        days TEXT,
-                        totalAmount TEXT,
-                        insulance TEXT,
-                        danga INTEGER,
-                        amountValue INTEGER
-                    );";
+                    string createSummaryTable = @"
+                        CREATE TABLE IF NOT EXISTS pastPrescriptionList (
+                            jumin VARCHAR(20),
+                            name VARCHAR(50),
+                            date DATE,
+                            hospital VARCHAR(100),
+                            doctor VARCHAR(50),
+                            totalAmountSum INT
+                        );";
 
-                using (var cmd2 = new SQLiteCommand(createDetailTable, conn))
-                {
-                    cmd2.ExecuteNonQuery(); 
+                    using (var cmd1 = new MySqlCommand(createSummaryTable, conn))
+                    {
+                        cmd1.ExecuteNonQuery();
+                    }
+
+                    string createDetailTable = @"
+                        CREATE TABLE IF NOT EXISTS previousPrescriptionDetails (
+                            jumin VARCHAR(20),
+                            name VARCHAR(50),
+                            date DATE,
+                            drugCode VARCHAR(50),
+                            drugName VARCHAR(100),
+                            dose VARCHAR(20),
+                            timesPerDay VARCHAR(20),
+                            days VARCHAR(20),
+                            totalAmount VARCHAR(20),
+                            insulance VARCHAR(20),
+                            danga INT,
+                            amountValue INT
+                        );";
+
+                    using (var cmd2 = new MySqlCommand(createDetailTable, conn))
+                    {
+                        cmd2.ExecuteNonQuery();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("DB 초기화 오류: " + ex.Message);
             }
         }
 
-        // 요약 정보 삽입
         public static void InsertSummary(PrescriptionSummary summary)
         {
-            using (var conn = new SQLiteConnection(connectionString))
+            using (var conn = new MySqlConnection(connectionString))
             {
                 conn.Open();
 
@@ -72,7 +76,7 @@ namespace UPharmacy
                     (jumin, name, date, hospital, doctor, totalAmountSum)
                     VALUES (@jumin, @name, @date, @hospital, @doctor, @totalAmountSum);";
 
-                using (var cmd = new SQLiteCommand(query, conn))
+                using (var cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@jumin", summary.Jumin);
                     cmd.Parameters.AddWithValue("@name", summary.Name);
@@ -86,10 +90,9 @@ namespace UPharmacy
             }
         }
 
-        // 상세 정보 삽입
         public static void InsertDetail(PrescriptionDetail detail)
         {
-            using (var conn = new SQLiteConnection(connectionString))
+            using (var conn = new MySqlConnection(connectionString))
             {
                 conn.Open();
 
@@ -99,7 +102,7 @@ namespace UPharmacy
                     VALUES 
                     (@jumin, @name, @date, @drugCode, @drugName, @dose, @timesPerDay, @days, @totalAmount, @insulance, @danga, @amountValue);";
 
-                using (var cmd = new SQLiteCommand(query, conn))
+                using (var cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@jumin", detail.Jumin);
                     cmd.Parameters.AddWithValue("@name", detail.Name);
@@ -119,17 +122,16 @@ namespace UPharmacy
             }
         }
 
-        // 요약 정보 조회
         public static List<PrescriptionSummary> GetSummariesByJumin(string jumin)
         {
             var list = new List<PrescriptionSummary>();
 
-            using (var conn = new SQLiteConnection(connectionString))
+            using (var conn = new MySqlConnection(connectionString))
             {
                 conn.Open();
 
                 string query = "SELECT * FROM pastPrescriptionList WHERE jumin = @jumin";
-                using (var cmd = new SQLiteCommand(query, conn))
+                using (var cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@jumin", jumin);
                     using (var reader = cmd.ExecuteReader())
@@ -140,7 +142,7 @@ namespace UPharmacy
                             {
                                 Jumin = reader["jumin"].ToString(),
                                 Name = reader["name"].ToString(),
-                                Date = reader["date"].ToString(),
+                                Date = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd"),
                                 Hospital = reader["hospital"].ToString(),
                                 Doctor = reader["doctor"].ToString(),
                                 TotalAmountSum = Convert.ToInt32(reader["totalAmountSum"])
@@ -153,17 +155,16 @@ namespace UPharmacy
             return list;
         }
 
-        // 상세 정보 조회
         public static List<PrescriptionDetail> GetDetailsByJumin(string jumin)
         {
             var list = new List<PrescriptionDetail>();
 
-            using (var conn = new SQLiteConnection(connectionString))
+            using (var conn = new MySqlConnection(connectionString))
             {
                 conn.Open();
 
                 string query = "SELECT * FROM previousPrescriptionDetails WHERE jumin = @jumin";
-                using (var cmd = new SQLiteCommand(query, conn))
+                using (var cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@jumin", jumin);
                     using (var reader = cmd.ExecuteReader())
@@ -174,7 +175,7 @@ namespace UPharmacy
                             {
                                 Jumin = reader["jumin"].ToString(),
                                 Name = reader["name"].ToString(),
-                                Date = reader["date"].ToString(),
+                                Date = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd"),
                                 DrugCode = reader["drugCode"].ToString(),
                                 DrugName = reader["drugName"].ToString(),
                                 Dose = reader["dose"].ToString(),
@@ -194,7 +195,6 @@ namespace UPharmacy
         }
     }
 
-    // 요약 클래스
     public class PrescriptionSummary
     {
         public string Jumin { get; set; }
@@ -205,7 +205,6 @@ namespace UPharmacy
         public int TotalAmountSum { get; set; }
     }
 
-    // 상세 클래스
     public class PrescriptionDetail
     {
         public string Jumin { get; set; }
