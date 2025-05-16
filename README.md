@@ -20,7 +20,7 @@
 
 ## 2. 기술스택
 
-<img alt="C#" src ="https://img.shields.io/badge/C_sharp-3776AB.svg?&style=for-the-badge&logo=C#&logoColor=brown"/> <br /><br /> <br />
+<img src ="https://img.shields.io/badge/C_sharp-003545.svg?&style=for-the-badge&logo=Csharp&logoColor=brown"/> <img src="https://img.shields.io/badge/mysql-4479A1?style=for-the-badge&logo=mysql&logoColor=white">  <br /><br /> <br />
 
 ## 3. 기능
 ### 📂 Project Structure (폴더 구조)
@@ -28,7 +28,7 @@
 Graph_Drug/
 |     
 |ㅡ Form1.cs            # UI 및 이벤트 핸들링
-|ㅡ DB.cs               # SQLite 데이터베이스 핸들링    
+|ㅡ DB.cs               # MySQL 데이터베이스 핸들링    
 |ㅡ RoundedGroupBox.cs  # 시각화 로직 
 └── README.md           # GitHub 설명 파일
 ```
