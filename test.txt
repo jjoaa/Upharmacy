@@ -1,0 +1,17 @@
+git 올리기
+
+git add test.txt
+
+git commit -m "내용"
+
+뭔가를 수정할꺼야
+
+
+git branch sever 2  -> branch 추가
+git switch sever 2
+: Switched to branch 'sever2' 
+
+git에 있는 파일들을 복제(clone)하기
+git clone 주소.git
+git clone https://github.com/jjoaa/Upharmacy.git
+
